@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  bot-curator:
+    build: .
+    container_name: telegram_curator
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Moscow
+    volumes:
+      - ./curator_session.session:/app/curator_session.session
+      - ./history.db:/app/history.db
