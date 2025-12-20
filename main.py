@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timedelta
 
 from pyrogram import Client
+from pyrogram.enums import ParseMode
 from pyrogram.errors import FloodWait
 
 import config
@@ -36,7 +37,6 @@ async def job():
     candidates = []
 
     media_groups = {}
-    processed_ids = set()
 
     async with app:
         await database.init_db()
@@ -60,11 +60,7 @@ async def job():
                 media_groups[message.media_group_id].append(message)
                 continue
 
-            candidates.append({
-                "msg": message,
-                "score": calculate_score(message),
-                "is_album": False,
-            })
+            candidates.append({"msg": message, "score": calculate_score(message), "is_album": False, })
 
         for mg_id, messages in media_groups.items():
             already_sent = False
@@ -79,12 +75,8 @@ async def job():
 
             representative = messages[0]
 
-            candidates.append({
-                "msg": representative,
-                "score": calculate_score(representative),
-                "is_album": True,
-                "album_messages": messages,
-            })
+            candidates.append({"msg": representative, "score": calculate_score(representative), "is_album": True,
+                               "album_messages": messages, })
 
         if not candidates:
             logger.info("No candidate messages found")
@@ -98,22 +90,18 @@ async def job():
             target = config.TARGET_CHANNEL_ID
             source = config.SOURCE_CHANNEL_ID
 
+            caption = f"Больше контента в <a href='{config.PROMO_CHANNEL_URL}'>{config.PROMO_CHANNEL_NAME}</a>"
+
             if best_post["is_album"]:
-                await app.copy_media_group(
-                    chat_id=target,
-                    from_chat_id=source,
-                    message_id=best_post["msg"].id
-                )
+                await app.copy_media_group(chat_id=target, from_chat_id=source, message_id=best_post["msg"].id,
+                                           captions=caption)
 
                 for part in best_post["album_messages"]:
                     await database.add_post(source, part.id)
 
             else:
-                await app.copy_message(
-                    chat_id=target,
-                    from_chat_id=source,
-                    message_id=best_post["msg"].id
-                )
+                await app.copy_message(chat_id=target, from_chat_id=source, message_id=best_post["msg"].id,
+                                       caption=caption, parse_mode=ParseMode.HTML)
 
                 await database.add_post(source, best_post["msg"].id)
 
